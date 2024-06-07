@@ -1,0 +1,51 @@
+//IMPORTAR CSVTEST
+//NETEJAR DATABASE
+MATCH (n)
+DETACH DELETE n;
+
+
+//CONSTRAINTS
+CREATE CONSTRAINT FOR (i:INDIVIDUAL) REQUIRE i.Id IS UNIQUE;
+CREATE CONSTRAINT FOR (h:HABITATGE) REQUIRE h.Id_Habitatge IS UNIQUE;
+
+
+//INDEX
+CREATE INDEX Id_Habitatge FOR (h:HABITATGE) ON (h.Id, h.Municipi);
+CREATE INDEX Id_Individu FOR (i:INDIVIDUAL) ON (i.Id, i.name, i.surname, i.second_surname);
+
+
+//HABITATGES
+LOAD CSV WITH HEADERS FROM 'file:///HABITATGES.csv' AS row
+WITH row WHERE row.Municipi <> 'null' AND row.Id_Llar <> 'null'
+WITH row.Municipi AS Municipi, toInteger(row.Id_Llar) AS Id_Llar, toInteger(row.Any_Padro) AS Any_Padro, row.Carrer AS Carrer, toInteger(row.Numero) AS Numero
+MERGE (h:HABITATGE {Id_Habitatge: Id_Llar})
+SET h.Municipi = Municipi, h.Any_Padro = Any_Padro, h.Carrer = Carrer, h.Numero = Numero;
+
+
+//INDIVIDUAL
+LOAD CSV WITH HEADERS FROM 'file:///INDIVIDUAL.csv' AS row
+WITH row WHERE row.Id <> "null"
+MERGE (i:INDIVIDUAL {Id: row.Id})
+SET i.Year = toInteger(row.Year), i.name = row.name, i.surname = row.surname, i.second_surname = row.second_surname;
+
+
+//VIU
+LOAD CSV WITH HEADERS FROM 'file:///VIU.csv' AS row
+WITH row WHERE row.IND <> "null" AND row.HOUSE_ID <> "null"
+MATCH (i:INDIVIDUAL {Id: row.IND}), (h:HABITATGE {Id_Habitatge: row.HOUSE_ID})
+MERGE (i)-[rel:VIU {Location: row.Location, Year: toInteger(row.Year)}]->(h);
+
+
+//SAME_AS
+LOAD CSV WITH HEADERS FROM 'file:///SAME_AS.csv' AS row
+WITH row WHERE row.Id_A <> "null" AND row.Id_B <> "null"
+MATCH (p:INDIVIDUAL {Id: row.Id_A}), (s:INDIVIDUAL {Id: row.Id_B})
+MERGE (p)-[:SAME_AS]->(s);
+
+
+//FAMILIA
+LOAD CSV WITH HEADERS FROM 'file:///FAMILIA.csv' AS row
+WITH row WHERE row.ID_1 <> 'null' AND row.ID_2 <> 'null'
+WITH row.ID_1 AS ID_1, row.Relacio AS Relacio, row.Relacio_Harmonitzada AS Relacio_Harmonitzada, row.ID_2 AS ID_2
+MATCH (p:INDIVIDUAL {Id: ID_1}), (s:INDIVIDUAL {Id: ID_2})
+MERGE (p)-[rel:FAMILIA {Relacio: Relacio, Relacio_Harmonitzada: Relacio_Harmonitzada}]->(s);
