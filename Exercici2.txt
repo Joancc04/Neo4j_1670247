@@ -1,0 +1,15 @@
+a)
+MATCH (h:HABITATGE)<-[v:VIU]-(i:INDIVIDUAL)
+WHERE h.Municipi = 'SFLL' AND NOT i.surname = 'nan' AND NOT i.surname IS NULL
+RETURN h.Any_Padro, count(i), collect(DISTINCT i.surname)
+
+b)
+MATCH (a:INDIVIDUAL)<-[s:SAME_AS]-(i:INDIVIDUAL)
+WHERE (i.name = 'miguel' AND i.surname = 'estape' AND i.second_surname = 'bofill') OR (a.name = 'miguel' AND a.surname = 'estape' AND a.second_surname = 'bofill')
+RETURN i.name, collect(DISTINCT i.name), collect(DISTINCT i.second_surname)
+
+c)
+MATCH (i:INDIVIDUAL)-[f:FAMILIA]->(a:INDIVIDUAL)
+WHERE i.name = 'benito' AND i.surname = 'julivert' AND  f.Relacio_Harmonitzada = 'fill'
+RETURN a.name as nom, a.surname as cognom1, a.second_surname as cognom2, f.Relacio_Harmonitzada as relació
+ORDER BY nom
