@@ -1,25 +1,25 @@
-//IMPORTAR CSVTEST
+//IMPORTAR FINAL
 //NETEJAR DATABASE
 MATCH (n)
 DETACH DELETE n;
 
 
 //CONSTRAINTS
-CREATE CONSTRAINT FOR (i:INDIVIDUAL) REQUIRE i.Id IS UNIQUE;
-CREATE CONSTRAINT FOR (h:HABITATGE) REQUIRE h.Id_Habitatge IS UNIQUE;
+CREATE CONSTRAINT UNIQUE_ID IF NOT EXISTS FOR (i:INDIVIDUAL) REQUIRE i.Id is UNIQUE;
 
+CREATE CONSTRAINT ID_INDIVIDUAL IF NOT EXISTS FOR (i:INDIVIDUAL) REQUIRE i.Id is NOT NULL;
+CREATE CONSTRAINT ID_HABITATGE IF NOT EXISTS FOR (h:HABITATGE) REQUIRE h.Id_Habitatge is NOT NULL;
 
 //INDEX
-CREATE INDEX Id_Habitatge FOR (h:HABITATGE) ON (h.Id, h.Municipi);
-CREATE INDEX Id_Individu FOR (i:INDIVIDUAL) ON (i.Id, i.name, i.surname, i.second_surname);
+CREATE INDEX AnyPadroIndex IF NOT EXISTS FOR ()-[r:VIU]-() ON (r.Year);
+CREATE INDEX RelacioFamilia IF NOT EXISTS FOR ()-[r:FAMILIA]-() ON (r.Relacio_Harmonitzada);
 
 
 //HABITATGES
 LOAD CSV WITH HEADERS FROM 'file:///HABITATGES.csv' AS row
 WITH row WHERE row.Municipi <> 'null' AND row.Id_Llar <> 'null'
-WITH row.Municipi AS Municipi, toInteger(row.Id_Llar) AS Id_Llar, toInteger(row.Any_Padro) AS Any_Padro, row.Carrer AS Carrer, toInteger(row.Numero) AS Numero
-MERGE (h:HABITATGE {Id_Habitatge: Id_Llar})
-SET h.Municipi = Municipi, h.Any_Padro = Any_Padro, h.Carrer = Carrer, h.Numero = Numero;
+MERGE (h:HABITATGE {Municipi: row.Municipi, Id_Habitatge: row.Id_Llar, Any_Padro: toInteger(row.Any_Padro), Carrer: row.Carrer, 
+Numero: CASE WHEN row.Numero <> "null" THEN toInteger(row.Numero) ELSE row.Numero END});
 
 
 //INDIVIDUAL
@@ -31,9 +31,11 @@ SET i.Year = toInteger(row.Year), i.name = row.name, i.surname = row.surname, i.
 
 //VIU
 LOAD CSV WITH HEADERS FROM 'file:///VIU.csv' AS row
-WITH row WHERE row.IND <> "null" AND row.HOUSE_ID <> "null"
-MATCH (i:INDIVIDUAL {Id: row.IND}), (h:HABITATGE {Id_Habitatge: row.HOUSE_ID})
-MERGE (i)-[rel:VIU {Location: row.Location, Year: toInteger(row.Year)}]->(h);
+WITH row WHERE row.IND <> 'null' AND row.HOUSE_ID <> 'null'
+// WITH row.IND AS IND, toInteger(row.HOUSE_ID) AS HOUSE_ID, row.Location AS Location, toInteger(row.Year) AS Year
+MATCH (i:INDIVIDUAL), (h:HABITATGE)
+WHERE row.IND = i.Id AND toInteger(row.HOUSE_ID) = toInteger(h.Id_Habitatge) AND toInteger(row.Year) = toInteger(h.Any_Padro)
+MERGE (i)-[:VIU {Location: row.Location, Year: row.Year}]->(h);
 
 
 //SAME_AS
@@ -45,7 +47,7 @@ MERGE (p)-[:SAME_AS]->(s);
 
 //FAMILIA
 LOAD CSV WITH HEADERS FROM 'file:///FAMILIA.csv' AS row
-WITH row WHERE row.ID_1 <> 'null' AND row.ID_2 <> 'null'
-WITH row.ID_1 AS ID_1, row.Relacio AS Relacio, row.Relacio_Harmonitzada AS Relacio_Harmonitzada, row.ID_2 AS ID_2
-MATCH (p:INDIVIDUAL {Id: ID_1}), (s:INDIVIDUAL {Id: ID_2})
-MERGE (p)-[rel:FAMILIA {Relacio: Relacio, Relacio_Harmonitzada: Relacio_Harmonitzada}]->(s);
+WITH row WHERE row.ID_1 <> "null" AND row.ID_2 <> "null"
+MATCH (p:INDIVIDUAL), (s:INDIVIDUAL)
+WHERE row.ID_1 = p.Id AND row.ID_2 = s.Id
+CREATE (p)-[:FAMILIA {Relacio: row.Relacio, Relacio_Harmonitzada: row.Relacio_Harmonitzada}]->(s);
