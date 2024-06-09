@@ -1,30 +1,30 @@
-Per crear el graf***
+//Per crear el graf
 CALL gds.graph.project(
-    'myGraph',
+    'Padrons',
     ['INDIVIDUAL', 'HABITATGE'],
     {
-        VIU: {orientation: 'UNDIRECTED'},
-        FAMILIA: {orientation: 'UNDIRECTED'},
-        SAME_AS: {orientation: 'UNDIRECTED'}
+        VIU: {orientation: NATURAL},
+        FAMILIA: {orientation: NATURAL},
+        SAME_AS: {orientation: NATURAL}
     }
 );
+
 
 
 === Exercici 3 === 
 a)
 	- ## Mostra, en forma de taula, les 10 components connexes més grans (ids i mida)
-CALL gds.wcc.stream('myGraph')
+CALL gds.wcc.stream('Padrons')
 YIELD nodeId, componentId
-RETURN componentId AS Ids, count(*) AS Mida
+RETURN componentId, count(*) AS size
 ORDER BY size DESC
 LIMIT 10;
+
 	
 	- ## Per cada municipi i any el nombre de parelles del tipus: (Individu)—(Habitatge).
-CALL gds.wcc.stream('myGraph')
+CALL gds.wcc.stream('Padrons')
 YIELD nodeId, componentId
-WITH gds.util.asNode(nodeId) AS node, componentId
-MATCH (node)-[:VIU]->(h:HABITATGE)
-RETURN h.Municipi AS Municipi, h.Any_Padro AS Any_Padro, count(*) AS Parelles
+WITH gds.util.asNode(nodeId) AS individu, componentId
+MATCH (individu:INDIVIDUAL)-[v:VIU]->(h:HABITATGE)
+RETURN h.Municipi AS Municipi, h.Any_Padro AS Any, count(*) AS Parelles
 ORDER BY Parelles DESC, Any;
-
-	- ## Quantes components connexes no estan connectades a cap node de tipus ‘Habitatge’, és a dir, els individus sense casa.
