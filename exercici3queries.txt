@@ -28,3 +28,33 @@ WITH gds.util.asNode(nodeId) AS individu, componentId
 MATCH (individu:INDIVIDUAL)-[v:VIU]->(h:HABITATGE)
 RETURN h.Municipi AS Municipi, h.Any_Padro AS Any, count(*) AS Parelles
 ORDER BY Parelles DESC, Any;
+
+b)
+
+
+// MATEIX_HAB
+MATCH (h1:HABITATGE), (h2:HABITATGE)
+WHERE h1.Municipi = h2.Municipi AND h1.Carrer = h2.Carrer AND h1.Numero = h2.Numero AND h1.Any_Padro < h2.Any_Padro
+AND h1.Id_Habitatge < h2.Id_Habitatge
+MERGE (h1)-[:MATEIX_HAB]->(h2);
+
+// SUBGRAF
+CALL gds.graph.drop('Subgraf');
+
+CALL gds.graph.project(
+    'Subgraf',
+    ['INDIVIDUAL', 'HABITATGE'],
+    {
+        VIU: {orientation: 'UNDIRECTED'},
+        FAMILIA: {orientation: 'UNDIRECTED'},
+        MATEIX_HAB: {orientation: 'UNDIRECTED'}
+    }
+);
+
+
+// SIMILARITY
+CALL gds.nodeSimilarity.stream('Subgraf')
+YIELD node1, node2, similarity
+WITH gds.util.asNode(node1) AS node1, gds.util.asNode(node2) AS node2, similarity
+WHERE (labels(node1)[0] = labels(node2)[0]
+MERGE (node1)-[:SIMILAR_TO {Similaritat: similarity}]->(node2)
